@@ -78,11 +78,21 @@ def clean_text(text: str) -> str:
     return " ".join(s[:1].upper() + s[1:] for s in fixed if s)
 
 
-def parse_speakers(transcript: str, default_speaker: str = "Speaker") -> list[Utterance]:
+def split_inline_labels(transcript: str, names: list[str]) -> str:
+    """Dictation arrives as one paragraph: 'Priya: ... Arjun: ...'. Break before each known speaker label."""
+    labelled = {m.group(1) for m in map(SPEAKER_RE.match, transcript.splitlines()) if m}
+    names = sorted({n.strip() for n in names if n.strip()} | labelled, key=len, reverse=True)  # longest first
+    if not names:
+        return transcript
+    label = r"(?<=[.!?,])\s+(?=(?:" + "|".join(map(re.escape, names)) + r")\s*:\s)"
+    return re.sub(label, "\n", transcript)
+
+
+def parse_speakers(transcript: str, default_speaker: str = "Speaker", speakers: list[str] = ()) -> list[Utterance]:
     """Split a transcript into utterances. Unlabeled lines continue the previous speaker."""
     utterances: list[Utterance] = []
     speaker = default_speaker
-    for line in transcript.splitlines():
+    for line in split_inline_labels(transcript, list(speakers)).splitlines():
         if not line.strip():
             continue
         if m := SPEAKER_RE.match(line):

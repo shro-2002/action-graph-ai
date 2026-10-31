@@ -32,11 +32,34 @@ def _client() -> httpx.Client:
     )
 
 
-def create_issue(title: str, body: str, labels: list[str]) -> str:
-    with _client() as c:
-        r = c.post(f"/repos/{repo()}/issues", json={"title": title[:250], "body": body, "labels": labels})
+def _raise_for_status(r: httpx.Response) -> None:
     if r.status_code >= 300:
         raise TrackerError(f"GitHub {r.status_code}: {r.json().get('message', r.text)[:200]}")
+
+
+def find_issue(marker: str) -> str | None:
+    """URL of a recent action-graph issue whose body carries this marker, if one exists."""
+    with _client() as c:
+        r = c.get(f"/repos/{repo()}/issues", params={"labels": "action-graph", "state": "all", "per_page": 100})
+    _raise_for_status(r)
+    return next((i["html_url"] for i in r.json() if marker in (i.get("body") or "")), None)
+
+
+def create_issue(title: str, body: str, labels: list[str], marker: str = "") -> str:
+    """Idempotent per marker: a retry after a timeout returns the issue GitHub already created."""
+    try:
+        if marker and (found := find_issue(marker)):
+            return found
+        with _client() as c:
+            r = c.post(f"/repos/{repo()}/issues", json={"title": title[:250], "body": f"{body}\n\n<!-- {marker} -->", "labels": labels})
+    except httpx.TimeoutException as exc:
+        found = marker and find_issue(marker)
+        if found:
+            return found
+        raise TrackerError("GitHub timed out; the item stays approved and a retry will not duplicate it.") from exc
+    except httpx.HTTPError as exc:
+        raise TrackerError(f"GitHub unreachable: {type(exc).__name__}") from exc
+    _raise_for_status(r)
     return r.json()["html_url"]
 
 
@@ -44,8 +67,10 @@ def comment(issue_url: str, body: str) -> str:
     m = re.search(r"github\.com/([^/]+/[^/]+)/issues/(\d+)", issue_url)
     if not m:
         raise TrackerError(f"Not a GitHub issue URL: {issue_url}")
-    with _client() as c:
-        r = c.post(f"/repos/{m.group(1)}/issues/{m.group(2)}/comments", json={"body": body})
-    if r.status_code >= 300:
-        raise TrackerError(f"GitHub {r.status_code}: {r.json().get('message', r.text)[:200]}")
+    try:
+        with _client() as c:
+            r = c.post(f"/repos/{m.group(1)}/issues/{m.group(2)}/comments", json={"body": body})
+    except httpx.HTTPError as exc:
+        raise TrackerError(f"GitHub unreachable: {type(exc).__name__}") from exc
+    _raise_for_status(r)
     return r.json()["html_url"]

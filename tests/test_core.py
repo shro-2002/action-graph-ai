@@ -36,6 +36,13 @@ def test_speaker_parsing():
     assert [(u.speaker, u.text) for u in utts] == [("Priya", "Hi team Continuing here"), ("Ravi", "I will do it")]
 
 
+def test_inline_speaker_labels_from_one_paragraph_dictation():
+    utts = parse_speakers("Priya: launch is Nov 14. Arjun: I'll set up staging. Note: not a person. Priya: thanks.",
+                          speakers=["Priya", "Arjun"])
+    assert [u.speaker for u in utts] == ["Priya", "Arjun", "Priya"]
+    assert utts[1].text == "I'll set up staging. Note: not a person."
+
+
 @pytest.mark.parametrize("phrase,expected", [
     ("by Friday", "2026-11-06"), ("next Tuesday", "2026-11-10"), ("Nov 15", "2026-11-15"),
     ("15th November", "2026-11-15"), ("tomorrow", "2026-11-01"), ("in two weeks", "2026-11-14"),
@@ -92,7 +99,7 @@ def test_supersede_on_approval():
 
 def test_nothing_posted_without_approval(monkeypatch):
     calls = []
-    monkeypatch.setattr("app.tracker.create_issue", lambda *a: calls.append(a) or "https://github.com/x/y/issues/1")
+    monkeypatch.setattr("app.tracker.create_issue", lambda *a, **k: calls.append(a) or "https://github.com/x/y/issues/1")
     m = _ingest("01_sprint_planning", date(2026, 10, 24))
     first, second = m["items"][0], m["items"][1]
     service.approve(first["id"], {})
@@ -107,7 +114,7 @@ def test_concurrent_post_creates_one_issue(monkeypatch):
 
     calls = []
 
-    def slow_create(*a):
+    def slow_create(*a, **k):
         calls.append(a)
         time.sleep(0.2)  # GitHub round-trip: a second click lands while the first is in flight
         return f"https://github.com/x/y/issues/{len(calls)}"
@@ -139,3 +146,38 @@ def test_digest_groups_by_owner():
 def test_filler_between_verb_and_task():
     m = service.ingest("q", date(2026, 10, 31), "Priya: Um, Arjun will, uh, write the FAQ by Friday, no wait, Thursday.", [])
     assert [(i["owner"], i["deadline"]) for i in m["items"]] == [("Arjun", "2026-11-05")]
+
+
+def test_due_soon_reminder_escalates_to_overdue_and_can_be_redelivered():
+    _approve_all(_ingest("01_sprint_planning", date(2026, 10, 24)))
+    [soon] = service.run_reminders(datetime(2026, 10, 27, 9), window_hours=48)
+    assert soon["stage"] == "due_soon"
+    db.execute("UPDATE reminders SET posted_url='https://github.com/x/y/issues/1#c1' WHERE id=?", (soon["id"],))
+    later = {r["item_id"]: r for r in service.run_reminders(datetime(2026, 10, 29, 9), window_hours=0)}
+    assert later[soon["item_id"]]["stage"] == "overdue"
+    assert later[soon["item_id"]]["posted_url"] is None  # escalation is a new delivery
+    assert later[soon["item_id"]]["message"].startswith("⚠️ Overdue")
+
+
+def test_auto_delivery_comments_with_owner_mention(monkeypatch):
+    monkeypatch.setenv("OWNER_GITHUB", "Arjun=arjun-gh")
+    sent = []
+    monkeypatch.setattr("app.tracker.comment", lambda url, body: sent.append(body) or url + "#c1")
+    m = _ingest("01_sprint_planning", date(2026, 10, 24))
+    _approve_all(m)
+    arjun = next(i for i in m["items"] if i["owner"] == "Arjun")
+    db.execute("UPDATE items SET status='posted', tracker_url='https://github.com/x/y/issues/9' WHERE id=?", (arjun["id"],))
+    out = service.run_reminders(datetime(2026, 10, 27, 9), window_hours=48, deliver=True)
+    assert sent and sent[0].startswith("@arjun-gh ⏰ Due soon")
+    assert out[0]["posted_url"].endswith("#c1")
+
+
+def test_issue_create_timeout_recovers_existing_issue(monkeypatch):
+    import httpx
+    from app import tracker
+
+    found = iter([None, "https://github.com/x/y/issues/7"])  # not there before the POST, there after it timed out
+    monkeypatch.setattr(tracker, "find_issue", lambda marker: next(found))
+    monkeypatch.setattr(tracker, "_token", lambda: "t")
+    monkeypatch.setattr(httpx.Client, "post", lambda *a, **k: (_ for _ in ()).throw(httpx.ReadTimeout("slow")))
+    assert tracker.create_issue("t", "b", ["action-graph"], marker="m1") == "https://github.com/x/y/issues/7"

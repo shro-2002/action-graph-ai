@@ -133,7 +133,13 @@ dialog { border: 1px solid var(--line); border-radius: var(--radius-l); backgrou
 dialog::backdrop { background: rgba(20,18,12,.45); }
 dialog li { margin-bottom: 6px; }
 #toast { position: fixed; top: 16px; right: 16px; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: var(--radius-s); opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 420px; z-index: 10; }
-#toast.show { opacity: 1; }
+#toast.show { opacity: 1; pointer-events: auto; }
+#toast.error { background: #8a1c1c; color: #fff; }
+#toast .dismiss { margin-left: 10px; background: transparent; color: inherit; border: 1px solid currentColor; border-radius: var(--radius-s); padding: 2px 8px; cursor: pointer; }
+#toast .dismiss:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.person-card a.btn { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); background: var(--card); border-radius: var(--radius-s); text-decoration: none; color: inherit; font: inherit; }
+.person-card a.btn:hover { background: var(--line); }
+.person-card a.btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 @media (max-width: 860px) {
   .top, main { padding-left: 16px; padding-right: 16px; }

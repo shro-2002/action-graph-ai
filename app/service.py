@@ -1,4 +1,5 @@
 """Agent pipeline and state transitions. Routes in main.py stay thin."""
+import os
 import threading
 from datetime import date, datetime, timedelta
 
@@ -157,7 +158,8 @@ def _post(item_ids: list[int]) -> list[dict]:
         prefix = f"[{it['owner']}] " if it["owner"] else "[Decision] "
         due = f" (due {it['deadline']})" if it["deadline"] else ""
         try:
-            url = tracker.create_issue(prefix + it["text"] + due, _issue_body(it, m), ["action-graph", it["kind"]])
+            url = tracker.create_issue(prefix + it["text"] + due, _issue_body(it, m), ["action-graph", it["kind"]],
+                                       marker=f"action-graph-item:{it['id']}:{it['created_at']}")
         except tracker.TrackerError as exc:
             results.append({"id": item_id, "error": str(exc)})
             continue
@@ -173,19 +175,36 @@ def _post(item_ids: list[int]) -> list[dict]:
     return results
 
 
-def run_reminders(now: datetime, window_hours: int = 48) -> list[dict]:
-    """Create one reminder per open action due within the window (or overdue)."""
-    horizon = (now + timedelta(hours=window_hours)).date().isoformat()
+def _reminder_message(it: dict, overdue: bool) -> str:
+    return f"{'⚠️ Overdue' if overdue else '⏰ Due soon'}: {it['owner'] or 'Unassigned'} — {it['text']} (due {it['deadline']})"
+
+
+def run_reminders(now: datetime, window_hours: int = 48, deliver: bool = False) -> list[dict]:
+    """Schedule reminders for open actions due within the window. A due-soon reminder escalates once to overdue.
+
+    deliver=True (AUTO_POST_REMINDERS) comments on the item's GitHub issue: the human already confirmed that issue.
+    """
+    today, horizon = now.date().isoformat(), (now + timedelta(hours=window_hours)).date().isoformat()
     due = db.rows(
-        f"""SELECT i.* FROM items i LEFT JOIN reminders r ON r.item_id=i.id
-            WHERE i.kind='action' AND i.status IN {OPEN_ACTION} AND i.deadline IS NOT NULL
-            AND i.deadline <= ? AND r.id IS NULL""",
+        f"""SELECT i.*, r.id AS rem_id, r.stage FROM items i LEFT JOIN reminders r ON r.item_id=i.id
+            WHERE i.kind='action' AND i.status IN {OPEN_ACTION} AND i.deadline IS NOT NULL AND i.deadline <= ?""",
         (horizon,),
     )
     for it in due:
-        overdue = it["deadline"] < now.date().isoformat()
-        msg = f"{'⚠️ Overdue' if overdue else '⏰ Due soon'}: {it['owner'] or 'Unassigned'} — {it['text']} (due {it['deadline']})"
-        db.execute("INSERT INTO reminders (item_id, message, created_at) VALUES (?,?,?)", (it["id"], msg, db.now_iso()))
+        overdue = it["deadline"] < today
+        if it["rem_id"] is None:
+            db.execute("INSERT INTO reminders (item_id, message, stage, created_at) VALUES (?,?,?,?)",
+                       (it["id"], _reminder_message(it, overdue), "overdue" if overdue else "due_soon", db.now_iso()))
+        elif overdue and it["stage"] == "due_soon":
+            db.execute("UPDATE reminders SET message=?, stage='overdue', posted_url=NULL, created_at=? WHERE id=?",
+                       (_reminder_message(it, True), db.now_iso(), it["rem_id"]))
+    if deliver:
+        for r in reminders():
+            if r["tracker_url"] and not r["posted_url"]:
+                try:
+                    post_reminder(r["id"])
+                except tracker.TrackerError as exc:
+                    db.log_event("reminder_failed", {"reminder_id": r["id"], "error": str(exc)})
     return reminders()
 
 
@@ -194,14 +213,22 @@ def reminders() -> list[dict]:
                       JOIN items i ON i.id=r.item_id ORDER BY i.deadline""")
 
 
+def mention(owner: str | None) -> str:
+    """'@login' when OWNER_GITHUB maps the owner (e.g. 'Priya=priya-gh,Arjun=arjun-gh'), so GitHub notifies them."""
+    mapping = dict(pair.split("=", 1) for pair in os.getenv("OWNER_GITHUB", "").split(",") if "=" in pair)
+    login = {k.strip().lower(): v.strip() for k, v in mapping.items()}.get((owner or "").lower())
+    return f"@{login} " if login else ""
+
+
 def post_reminder(reminder_id: int) -> dict:
-    r = db.one("SELECT r.*, i.tracker_url FROM reminders r JOIN items i ON i.id=r.item_id WHERE r.id=?", (reminder_id,))
+    r = db.one("SELECT r.*, i.tracker_url, i.owner FROM reminders r JOIN items i ON i.id=r.item_id WHERE r.id=?", (reminder_id,))
     if not r:
         raise NotFound(f"reminder {reminder_id}")
     if not r["tracker_url"]:
         raise InvalidState("item has no tracker issue yet; post it first")
-    url = tracker.comment(r["tracker_url"], r["message"] + "\n\n_Reminder from Action Graph AI._")
+    url = tracker.comment(r["tracker_url"], mention(r["owner"]) + r["message"] + "\n\n_Reminder from Action Graph AI._")
     db.execute("UPDATE reminders SET posted_url=? WHERE id=?", (url, reminder_id))
+    db.log_event("reminder_posted", {"reminder_id": reminder_id, "url": url})
     return {"id": reminder_id, "url": url}
 
 

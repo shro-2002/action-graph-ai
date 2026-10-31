@@ -205,7 +205,7 @@ def extract(transcript: str, meeting_date: date, attendees: list[str], memory_su
             log.warning("LLM extraction failed, using rules: %s", exc)
             notes.append(f"LLM unavailable ({type(exc).__name__}); used deterministic extractor.")
     if result is None:
-        utterances = parse_speakers(transcript, attendees[0] if attendees else "Speaker")
+        utterances = parse_speakers(transcript, attendees[0] if attendees else "Speaker", attendees)
         result = Extraction(utterances, rule_extract(utterances, meeting_date), "rules")
     people = set(attendees) | {u.speaker for u in result.utterances}
     result.items = _validate(result.items, meeting_date, people)

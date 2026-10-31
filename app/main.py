@@ -52,7 +52,7 @@ class PostIn(BaseModel):
 async def reminder_loop() -> None:
     while True:
         try:
-            service.run_reminders(datetime.now())
+            service.run_reminders(datetime.now(), deliver=os.getenv("AUTO_POST_REMINDERS") == "1")
         except Exception:
             log.exception("reminder loop failed")
         await asyncio.sleep(REMINDER_INTERVAL_S)
@@ -92,7 +92,8 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "llm": bool(os.getenv("ANTHROPIC_API_KEY")), "repo": tracker.repo()}
+        return {"status": "ok", "llm": bool(os.getenv("ANTHROPIC_API_KEY")), "repo": tracker.repo(),
+                "auto_reminders": os.getenv("AUTO_POST_REMINDERS") == "1", "reminder_interval_s": REMINDER_INTERVAL_S}
 
     @app.post("/api/meetings", status_code=201)
     def ingest(body: IngestIn):

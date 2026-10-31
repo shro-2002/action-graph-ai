@@ -32,7 +32,7 @@
     <div class="workspace">
       <form class="capture" id="captureForm">
         <h2>1 · Speak the meeting</h2>
-        <p class="hint">Click the box and hold your <strong>Wispr Flow</strong> hotkey. Talk naturally: fillers, digressions and “no wait, I mean…” are fine. Prefix lines with <code>Name:</code> for speakers.</p>
+        <p class="hint">Click the box and hold your <strong>Wispr Flow</strong> hotkey. Talk naturally: fillers, digressions and “no wait, I mean…” are fine. Say each speaker's name and a colon (<code>Priya: …</code>) when they start talking; one long paragraph is fine.</p>
         <div class="row">
           <label>Title<input name="title" required value="Launch sync"></label>
           <label>Date<input name="date" type="date" required></label>
@@ -83,7 +83,7 @@
       <label>Window (hours)<input type="number" name="window" value="48" min="1" max="720"></label>
       <button class="primary" type="submit">Check deadlines</button>
     </form>
-    <p class="hint">Runs automatically every 5 minutes. Posting a reminder to the GitHub issue always asks first.</p>
+    <p class="hint" id="remMode">Runs automatically every 5 minutes.</p>
     <ul id="reminders" class="list"></ul>
   </section>
 

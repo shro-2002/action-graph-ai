@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE TABLE IF NOT EXISTS reminders (
   id INTEGER PRIMARY KEY, item_id INTEGER NOT NULL REFERENCES items(id),
   message TEXT NOT NULL, created_at TEXT NOT NULL, posted_url TEXT,
+  stage TEXT NOT NULL DEFAULT 'due_soon',
   UNIQUE(item_id)
 );
 CREATE TABLE IF NOT EXISTS events (
@@ -55,6 +56,8 @@ def connect(path: str | None = None) -> sqlite3.Connection:
     _conn = sqlite3.connect(path, check_same_thread=False)
     _conn.row_factory = sqlite3.Row
     _conn.executescript(SCHEMA)
+    if "stage" not in {r[1] for r in _conn.execute("PRAGMA table_info(reminders)")}:  # databases created before escalation
+        _conn.execute("ALTER TABLE reminders ADD COLUMN stage TEXT NOT NULL DEFAULT 'due_soon'")
     return _conn
 
 

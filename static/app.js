@@ -12,13 +12,17 @@ async function api(path, opts = {}) {
   return data;
 }
 
-function toast(msg) {
+function toast(msg, isError = false) {
   const t = $("#toast");
-  t.textContent = msg;
-  t.classList.add("show");
   clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove("show"), 3500);
+  t.classList.toggle("error", isError);
+  t.setAttribute("role", isError ? "alert" : "status");
+  t.innerHTML = esc(msg) + (isError ? ` <button type="button" class="dismiss" aria-label="Dismiss error">Dismiss</button>` : "");
+  t.classList.add("show");
+  if (isError) { const b = $(".dismiss", t); b.onclick = () => t.classList.remove("show"); b.focus(); }
+  else t._h = setTimeout(() => t.classList.remove("show"), 3500);  // errors stay until dismissed
 }
+const fail = (err) => toast(err.message || String(err), true);
 
 /* ---------- tabs ---------- */
 const loaders = { graph: loadGraph, memory: loadMemory, reminders: loadReminders, digest: loadDigest, score: loadScore };
@@ -39,6 +43,9 @@ tabButtons.forEach((b, i) => {
 /* ---------- status ---------- */
 async function loadStatus() {
   health = await api("/api/health");
+  $("#remMode").textContent = health.auto_reminders
+    ? `Checked every ${health.reminder_interval_s / 60} minutes and delivered automatically as a comment on the action's GitHub issue (AUTO_POST_REMINDERS=1).`
+    : `Checked every ${health.reminder_interval_s / 60} minutes. Delivery is manual: posting a reminder to the GitHub issue asks first. Set AUTO_POST_REMINDERS=1 to deliver automatically.`;
   const s = await api("/api/stats");
   $("#status").innerHTML = `
     <span class="pill ${health.llm ? "on" : "off"}">${health.llm ? "Claude extraction on" : "Rules-only extraction"}</span>
@@ -104,7 +111,7 @@ form.addEventListener("submit", async (e) => {
     currentMeeting = m;
     renderTrace(4, m);
     renderMeeting(m);
-    (m.notes || []).forEach(toast);
+    (m.notes || []).forEach((n) => toast(n, true));
     loadStatus();
   } catch (err) {
     $("#trace").innerHTML = `<li class="alert">${esc(err.message)}</li>`;
@@ -162,7 +169,7 @@ async function decide(el, it, action) {
     if (action === "approve" && it.conflict_with) toast("Approved. The earlier decision is now marked superseded.");
     updatePostbar();
     loadStatus();
-  } catch (err) { toast(err.message); }
+  } catch (err) { fail(err); }
 }
 
 function approvedIds() {
@@ -188,11 +195,12 @@ $("#confirmDlg").addEventListener("close", async () => {
     const results = await api("/api/post", { method: "POST", body: JSON.stringify({ item_ids: ids, confirm: true }) });
     const ok = results.filter((r) => r.url).length;
     const failed = results.filter((r) => r.error);
-    toast(failed.length ? `${ok} posted, ${failed.length} failed: ${failed[0].error}` : `Created ${ok} GitHub issue${ok === 1 ? "" : "s"}`);
+    if (failed.length) toast(`${ok} posted, ${failed.length} failed: ${failed[0].error}`, true);
+    else toast(`Created ${ok} GitHub issue${ok === 1 ? "" : "s"}`);
     currentMeeting = await api(`/api/meetings/${currentMeeting.id}`);
     renderMeeting(currentMeeting);
     loadStatus();
-  } catch (err) { toast(err.message); }
+  } catch (err) { fail(err); }
 });
 
 /* ---------- graph ---------- */
@@ -239,13 +247,13 @@ async function loadReminders(list) {
   list = list || (await api("/api/reminders"));
   $("#reminders").innerHTML = list.length ? list.map((r) => `
     <li><span>${esc(r.message)}</span>
-      ${r.posted_url ? `<a class="link" href="${esc(r.posted_url)}" target="_blank" rel="noopener">Posted ↗</a>`
+      ${r.posted_url ? `<a class="link" href="${esc(r.posted_url)}" target="_blank" rel="noopener">Delivered to issue ↗</a>`
         : r.tracker_url ? `<button data-rem="${r.id}">Post to issue</button>` : `<small>Not in tracker yet</small>`}</li>`).join("")
     : `<li><span>No reminders. Check deadlines with a date near an approved action's deadline.</span></li>`;
   document.querySelectorAll("[data-rem]").forEach((b) => b.addEventListener("click", async () => {
     if (!confirm("Post this reminder as a comment on the GitHub issue?")) return;
     try { await api(`/api/reminders/${b.dataset.rem}/post`, { method: "POST" }); toast("Reminder posted"); loadReminders(); }
-    catch (err) { toast(err.message); }
+    catch (err) { fail(err); }
   }));
 }
 $("#remForm").addEventListener("submit", async (e) => {
@@ -253,7 +261,7 @@ $("#remForm").addEventListener("submit", async (e) => {
   const f = e.target;
   const params = new URLSearchParams({ window_hours: f.window.value });
   if (f.now.value) params.set("now", f.now.value);
-  try { loadReminders(await api(`/api/reminders/run?${params}`, { method: "POST" })); } catch (err) { toast(err.message); }
+  try { loadReminders(await api(`/api/reminders/run?${params}`, { method: "POST" })); } catch (err) { fail(err); }
 });
 
 /* ---------- digest ---------- */
@@ -268,17 +276,18 @@ function digestMarkdown(p, week) {
 }
 async function loadDigest() {
   const week = $("#digestForm").week.value;
-  const people = await api(`/api/digest?week_start=${week}`);
+  let people;
+  try { people = await api(`/api/digest?week_start=${week}`); } catch (err) { return fail(err); }
   const list = (title, items, bad) => items.length ? `<h4 class="${bad ? "bad" : ""}">${title}</h4><ul>${items.map((i) =>
     `<li>${esc(i.text)}${i.deadline ? ` <small>· ${esc(i.deadline)}</small>` : ""}</li>`).join("")}</ul>` : "";
   $("#digest").innerHTML = people.length ? people.map((p, idx) => `
-    <article class="person-card"><h3>${esc(p.person)} <button data-copy="${idx}">Copy</button></h3>
+    <article class="person-card"><h3>${esc(p.person)} <span><button data-copy="${idx}">Copy</button> <a class="btn" href="mailto:?subject=${encodeURIComponent(`Weekly digest for ${p.person} (week of ${week})`)}&body=${encodeURIComponent(digestMarkdown(p, week))}">Email</a></span></h3>
       ${list("Overdue", p.overdue, true)}${list("Due this week", p.due_this_week)}${list("Coming up", p.later)}
       ${list("Done", p.done)}${list("Decisions made", p.decisions)}
     </article>`).join("") : `<p class="empty">Nothing approved yet for anyone.</p>`;
   document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(digestMarkdown(people[b.dataset.copy], week));
-    toast("Digest copied as Markdown");
+    try { await navigator.clipboard.writeText(digestMarkdown(people[b.dataset.copy], week)); toast("Digest copied as Markdown"); }
+    catch (err) { fail(err); }
   }));
 }
 

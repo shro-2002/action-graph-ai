@@ -1,0 +1,44 @@
+[
+  {
+    "name": "self-corrected deadline",
+    "date": "2026-10-31",
+    "transcript": "Priya: Um, so Arjun, can you ship the onboarding emails by Friday, no wait, Thursday?\nArjun: Yeah, uh, sure.",
+    "expected": [{"kind": "action", "owner": "Arjun", "deadline": "2026-11-05"}]
+  },
+  {
+    "name": "decision with correction across sentences",
+    "date": "2026-10-31",
+    "transcript": "Priya: We're moving the launch date to November 21. No wait, November 28.",
+    "expected": [{"kind": "decision", "subject": "launch date", "value": "November 28"}]
+  },
+  {
+    "name": "fillers and repeated words",
+    "date": "2026-11-02",
+    "transcript": "Meera: So, like, I'll, I'll, uh, write the release notes by tomorrow, you know.",
+    "expected": [{"kind": "action", "owner": "Meera", "deadline": "2026-11-03"}]
+  },
+  {
+    "name": "named owner, absolute date",
+    "date": "2026-11-02",
+    "transcript": "Ravi: Okay. Kabir will finish the security review by Nov 12.\nRavi: And we decided to go with Stripe for payments.",
+    "expected": [
+      {"kind": "action", "owner": "Kabir", "deadline": "2026-11-12"},
+      {"kind": "decision", "subject": "payments", "value": "Stripe"}
+    ]
+  },
+  {
+    "name": "digression with no commitments",
+    "date": "2026-11-02",
+    "transcript": "Arjun: Honestly the weather has been wild this week.\nMeera: Yeah, um, my commute took forever.",
+    "expected": []
+  },
+  {
+    "name": "trailing ask and name correction",
+    "date": "2026-11-02",
+    "transcript": "Priya: Can you book the venue by next Friday, Meera?\nPriya: Sanjay owns the budget sheet, sorry I mean Anita owns the budget sheet.",
+    "expected": [
+      {"kind": "action", "owner": "Meera", "deadline": "2026-11-13"},
+      {"kind": "action", "owner": "Anita", "deadline": null}
+    ]
+  }
+]

@@ -1,0 +1,7 @@
+Priya: Okay so, um, let's lock the big things for the Nova launch.
+Priya: We decided the launch date is November 14.
+Arjun: Agreed. And we will use Postgres for the database.
+Arjun: I'll set up the staging environment by Wednesday.
+Priya: Meera, can you draft the pricing page copy by October 30?
+Meera: Sure. Meera will also, uh, schedule the beta user interviews by next Friday.
+Priya: Final call, the free tier stays at 3 projects.

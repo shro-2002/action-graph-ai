@@ -1,0 +1,6 @@
+Priya: Um so yeah, quick sync. Uh, the marketing agency came back and, you know, they need more time.
+Priya: So we're moving the launch date to November 21. No wait, November 28, they said two weeks.
+Arjun: Okay. Also, uh, we're going with MongoDB for the database, the schema keeps changing.
+Arjun: I'll migrate the staging data by Tuesday, actually Monday.
+Meera: Ravi will update the press kit by November 20.
+Priya: And I'll, um, I'll send the investor update by end of week.

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Action Graph AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div><h1>Action Graph</h1><p class="tag">Meetings in. Execution out. Nothing forgotten, nothing contradicted.</p></div>
+  </div>
+  <div class="status" id="status" aria-live="polite"></div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button role="tab" aria-selected="true" data-tab="meeting">Meeting</button>
+  <button role="tab" aria-selected="false" data-tab="graph">Action graph</button>
+  <button role="tab" aria-selected="false" data-tab="memory">Memory</button>
+  <button role="tab" aria-selected="false" data-tab="reminders">Reminders</button>
+  <button role="tab" aria-selected="false" data-tab="digest">Weekly digest</button>
+  <button role="tab" aria-selected="false" data-tab="score">Scorecard</button>
+</nav>
+
+<main>
+  <section id="tab-meeting" class="tab active" role="tabpanel">
+    <div class="workspace">
+      <form class="capture" id="captureForm">
+        <h2>1 · Speak the meeting</h2>
+        <p class="hint">Click the box and hold your <strong>Wispr Flow</strong> hotkey. Talk naturally: fillers, digressions and “no wait, I mean…” are fine. Prefix lines with <code>Name:</code> for speakers.</p>
+        <div class="row">
+          <label>Title<input name="title" required value="Launch sync"></label>
+          <label>Date<input name="date" type="date" required></label>
+        </div>
+        <label>Attendees<input name="attendees" placeholder="Priya, Arjun, Meera"></label>
+        <label class="grow">Transcript
+          <textarea name="transcript" id="transcript" required minlength="10" placeholder="Priya: Um so, we're moving the launch to Friday, no wait, Monday…"></textarea>
+        </label>
+        <div class="row samples" id="samples"></div>
+        <button class="primary" type="submit" id="runBtn">Run agent</button>
+      </form>
+
+      <div class="work">
+        <ol class="trace" id="trace" aria-label="Agent steps"></ol>
+        <details class="clean" id="cleanBox" hidden>
+          <summary>Cleaned, speaker-attributed transcript</summary>
+          <div id="cleanText"></div>
+        </details>
+        <h2 class="queue-h">2 · Review what the agent found</h2>
+        <div id="queue" class="queue"><p class="empty">Run the agent on a meeting. Every decision and action lands here first. Nothing is posted until you approve it.</p></div>
+      </div>
+    </div>
+    <div class="postbar" id="postbar" hidden>
+      <span id="postCount"></span>
+      <button class="primary" id="postBtn">Review &amp; post to GitHub</button>
+    </div>
+  </section>
+
+  <section id="tab-graph" class="tab" role="tabpanel">
+    <div class="legend">
+      <span><i class="dot meeting"></i>Meeting</span><span><i class="dot person"></i>Person</span>
+      <span><i class="dot decision"></i>Decision</span><span><i class="dot action"></i>Action</span>
+      <span><i class="line conflict"></i>Conflict</span><span><i class="dot superseded"></i>Superseded</span>
+    </div>
+    <div id="cy" aria-label="Graph of meetings, people, decisions and actions"></div>
+  </section>
+
+  <section id="tab-memory" class="tab" role="tabpanel">
+    <h2>Decision memory</h2>
+    <p class="hint">Every approved decision across meetings, grouped by subject. New decisions are checked against this before you see them.</p>
+    <div id="memory"></div>
+  </section>
+
+  <section id="tab-reminders" class="tab" role="tabpanel">
+    <h2>Reminders</h2>
+    <form class="row inline" id="remForm">
+      <label>Check as of<input type="datetime-local" name="now"></label>
+      <label>Window (hours)<input type="number" name="window" value="48" min="1" max="720"></label>
+      <button class="primary" type="submit">Check deadlines</button>
+    </form>
+    <p class="hint">Runs automatically every 5 minutes. Posting a reminder to the GitHub issue always asks first.</p>
+    <ul id="reminders" class="list"></ul>
+  </section>
+
+  <section id="tab-digest" class="tab" role="tabpanel">
+    <h2>Weekly digest</h2>
+    <form class="row inline" id="digestForm">
+      <label>Week starting<input type="date" name="week"></label>
+      <button class="primary" type="submit">Build digests</button>
+    </form>
+    <div id="digest" class="digest"></div>
+  </section>
+
+  <section id="tab-score" class="tab" role="tabpanel">
+    <h2>Agent scorecard</h2>
+    <p class="hint">Live behaviour of the agent in this workspace. Offline extraction accuracy: run <code>python -m evals.run_eval</code>.</p>
+    <div id="score" class="score"></div>
+  </section>
+</main>
+
+<dialog id="confirmDlg">
+  <form method="dialog">
+    <h2>Post to GitHub?</h2>
+    <p>These approved items will become issues in <strong id="repoName"></strong>:</p>
+    <ul id="confirmList"></ul>
+    <div class="row end">
+      <button value="cancel">Cancel</button>
+      <button class="primary" value="ok" id="confirmOk">Confirm &amp; create issues</button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

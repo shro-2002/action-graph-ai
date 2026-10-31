@@ -37,12 +37,18 @@ def _raise_for_status(r: httpx.Response) -> None:
         raise TrackerError(f"GitHub {r.status_code}: {r.json().get('message', r.text)[:200]}")
 
 
+def _trailer(marker: str) -> str:
+    """Bot-written last line of an issue body. User text never ends the body, so it cannot fake this."""
+    return f"<!-- {marker} -->"
+
+
 def find_issue(marker: str) -> str | None:
     """URL of a recent action-graph issue whose body carries this marker, if one exists."""
     with _client() as c:
         r = c.get(f"/repos/{repo()}/issues", params={"labels": "action-graph", "state": "all", "per_page": 100})
     _raise_for_status(r)
-    return next((i["html_url"] for i in r.json() if marker in (i.get("body") or "")), None)
+    trailer = _trailer(marker)
+    return next((i["html_url"] for i in r.json() if (i.get("body") or "").rstrip().endswith(trailer)), None)
 
 
 def create_issue(title: str, body: str, labels: list[str], marker: str = "") -> str:
@@ -51,7 +57,7 @@ def create_issue(title: str, body: str, labels: list[str], marker: str = "") -> 
         if marker and (found := find_issue(marker)):
             return found
         with _client() as c:
-            r = c.post(f"/repos/{repo()}/issues", json={"title": title[:250], "body": f"{body}\n\n<!-- {marker} -->", "labels": labels})
+            r = c.post(f"/repos/{repo()}/issues", json={"title": title[:250], "body": f"{body.replace('-->', '--&gt;')}\n\n{_trailer(marker)}", "labels": labels})
     except httpx.TimeoutException as exc:
         found = marker and find_issue(marker)
         if found:

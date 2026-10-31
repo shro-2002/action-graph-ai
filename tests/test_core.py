@@ -181,3 +181,16 @@ def test_issue_create_timeout_recovers_existing_issue(monkeypatch):
     monkeypatch.setattr(tracker, "_token", lambda: "t")
     monkeypatch.setattr(httpx.Client, "post", lambda *a, **k: (_ for _ in ()).throw(httpx.ReadTimeout("slow")))
     assert tracker.create_issue("t", "b", ["action-graph"], marker="m1") == "https://github.com/x/y/issues/7"
+
+
+def test_marker_in_quoted_text_does_not_match(monkeypatch):
+    from app import tracker
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            return [{"html_url": "u1", "body": "> quote <!-- m1 --> spoofed\n\n<!-- other -->"},
+                    {"html_url": "u2", "body": "real\n\n<!-- m1 -->"}]
+    monkeypatch.setattr(tracker, "_token", lambda: "t")
+    monkeypatch.setattr("httpx.Client.get", lambda *a, **k: Resp())
+    assert tracker.find_issue("m1") == "u2"

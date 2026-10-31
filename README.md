@@ -8,12 +8,12 @@ Built for the Product Space × Wispr Flow Agentic AI Hackathon 2026, Problem 03:
 ## What it does
 
 1. **Capture by voice.** You dictate the meeting (or paste a transcript) into the capture box with Wispr Flow. Fillers, repeated words and self-corrections are expected: "launch on Friday, no wait, Monday" becomes "launch on Monday".
-2. **Attribute speakers.** `Name:` and `[00:12] Name:` labels are parsed, and unlabeled dictation continues the previous speaker.
+2. **Attribute speakers.** `Name:` and `[00:12] Name:` labels are parsed, including several labels inside one dictated paragraph. Unlabeled dictation continues the previous speaker.
 3. **Extract.** Claude (tool use with a strict JSON schema) pulls out decisions (subject → value) and action items (owner, deadline). Deterministic guardrails then resolve relative dates against the meeting date and match owners to attendees. If no API key is set, or the call fails, a rule-based extractor runs instead. The UI always says which extractor ran.
 4. **Check memory.** Every new decision is compared with approved decisions from past meetings. PyTorch cosine similarity over hashed n-gram vectors finds decisions about the same subject. Fixed rules then flag a clash when the values differ or one decision reverses the other. Each flag comes with a plain-English reason, e.g. "Contradicts 'Sprint planning' (2026-10-24, Priya): launch date was “November 14”, now “November 28”."
 5. **Human approval.** Every item starts as *pending*. You can edit the owner, deadline or value, then approve or reject. Approving a conflicting decision marks the old one *superseded*.
 6. **Post to the tracker.** A confirmation dialog lists exactly what will be created. Only then are GitHub Issues created. If a superseded decision already had an issue, that issue gets a back-link comment.
-7. **Follow through.** Reminders for actions due within a window (or overdue) are generated every 5 minutes or on demand. Each one can be posted to its issue after a confirm. A weekly digest per person groups their work into overdue, due this week, coming up, done, and decisions made.
+7. **Follow through.** Reminders for actions due within a window (or overdue) are checked every 5 minutes or on demand, and a due-soon reminder escalates to overdue. Delivery is a comment on the action's GitHub issue, after a confirm (or automatically with `AUTO_POST_REMINDERS=1`). A weekly digest per person groups their work into overdue, due this week, coming up, done, and decisions made; you send it with Email or Copy.
 
 Views: Meeting workspace · Action graph (meetings, people, decisions, actions, conflict edges) · Decision memory timeline · Reminders · Weekly digest · Scorecard.
 
@@ -63,7 +63,7 @@ Optional settings:
 ## Verify it
 
 ```bash
-.venv/bin/python -m pytest -q          # 30 tests: cleanup, inline speaker labels, dates, extraction, conflicts, supersede, approval gate, double-submit, timeout retry, reminders + escalation + delivery, digest, CSRF + host checks
+.venv/bin/python -m pytest -q          # 31 tests: cleanup, inline speaker labels, dates, extraction, conflicts, supersede, approval gate, double-submit, timeout retry, marker spoofing, reminders + escalation + delivery, digest, CSRF + host checks
 .venv/bin/python -m evals.run_eval     # precision/recall on labeled messy-speech cases (rules)
 .venv/bin/python -m evals.run_eval --llm   # same cases through Claude
 .venv/bin/python -m evals.run_eval --holdout [--llm]   # 18 held-out cases, never used for tuning

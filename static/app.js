@@ -1,6 +1,7 @@
 "use strict";
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const today = () => new Date().toISOString().slice(0, 10);
 let health = {};
 let currentMeeting = null;
@@ -84,7 +85,7 @@ function renderTrace(active, m) {
       const conflicts = m.items.filter((x) => x.conflict_with).length;
       const speakers = new Set(m.utterances.map((u) => u.speaker)).size;
       text = [`Cleaned ${m.utterances.length} utterances`, `${speakers} speakers`,
-        `${decisions} decisions, ${m.items.length - decisions} actions · ${m.extractor}`,
+        `${plural(decisions, "decision")}, ${plural(m.items.length - decisions, "action")} · ${m.extractor}`,
         conflicts ? `${conflicts} conflict${conflicts > 1 ? "s" : ""} with memory` : "No conflicts with memory",
         "Awaiting your approval"][i];
       cls = i === 3 && conflicts ? "alert" : i < 4 ? "done" : "running";
@@ -301,7 +302,7 @@ async function loadScore() {
     + tile(s.rejected, "rejected") + tile(s.posted, "posted to GitHub") + tile(s.meetings, "meetings ingested");
   const evals = await api("/api/eval");
   $("#score").innerHTML += evals.map((e) => tile(`${Math.round(e.precision * 100)}% / ${Math.round(e.recall * 100)}%`,
-    `precision / recall · ${e.set === "holdout" ? "held-out set (never tuned on)" : "dev set (rules tuned on it)"} · ${esc(e.extractor)}`)).join("");
+    `precision / recall · ${e.set === "holdout" ? "held-out set, 18 cases (never tuned on)" : "dev set, 6 cases (the rules extractor was tuned on it)"} · ${esc(e.extractor)}`)).join("");
 }
 
 loadStatus();

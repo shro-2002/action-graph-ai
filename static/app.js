@@ -217,9 +217,11 @@ async function loadGraph() {
   cy?.destroy();
   cy = cytoscape({
     container: $("#cy"), elements, wheelSensitivity: 0.2,
-    layout: { name: "cose", animate: false, nodeRepulsion: 40000, idealEdgeLength: 140, nodeOverlap: 40, gravity: 0.15, padding: 40, randomize: false },
+    // Labels count as node size during layout, so text never lands on another node or label.
+    layout: { name: "cose", animate: false, nodeDimensionsIncludeLabels: true, nodeRepulsion: 120000, idealEdgeLength: 120,
+      nodeOverlap: 60, componentSpacing: 120, gravity: 0.25, padding: 48, randomize: false },
     style: [
-      { selector: "node", style: { label: "data(label)", "font-size": 9, "text-wrap": "wrap", "text-max-width": 110, color: v("--ink"), "text-valign": "bottom", "text-margin-y": 4, width: 20, height: 20, "text-background-color": v("--card"), "text-background-opacity": 0.85, "text-background-padding": 2 } },
+      { selector: "node", style: { label: "data(label)", "font-size": 11, "text-wrap": "wrap", "text-max-width": 130, color: v("--ink"), "text-valign": "bottom", "text-margin-y": 4, width: 20, height: 20, "text-background-color": v("--card"), "text-background-opacity": 0.85, "text-background-padding": 2 } },
       { selector: ".meeting", style: { shape: "round-rectangle", "background-color": v("--meeting"), width: 30, height: 30, "font-weight": 600 } },
       { selector: ".person", style: { "background-color": v("--person"), width: 28, height: 28, "font-size": 12, "font-weight": 600 } },
       { selector: ".decision", style: { "background-color": v("--decision"), shape: "diamond" } },
@@ -227,9 +229,15 @@ async function loadGraph() {
       { selector: ".pending", style: { "border-width": 2, "border-style": "dashed", "border-color": v("--muted"), "background-opacity": 0.5 } },
       { selector: ".superseded", style: { "background-color": v("--line"), "border-width": 1, "border-style": "dashed", "border-color": v("--muted"), color: v("--muted") } },
       { selector: "edge", style: { width: 1.2, "line-color": v("--line"), "curve-style": "bezier", "target-arrow-shape": "triangle", "target-arrow-color": v("--line"), "arrow-scale": 0.7 } },
-      { selector: "edge.conflicts", style: { width: 2.5, "line-color": v("--conflict"), "target-arrow-color": v("--conflict"), "line-style": "dashed", label: "conflicts", "font-size": 9, color: v("--conflict") } },
+      { selector: "edge.conflicts", style: { width: 2.5, "line-color": v("--conflict"), "target-arrow-color": v("--conflict"), "line-style": "dashed" } }, // no edge label: it sat on the short edge between diamonds; the legend names the red dashed line
     ],
   });
+  // The panel is wide; a tall layout fitted into it renders tiny. Turn it sideways (a 90° turn keeps every distance, so no new overlaps).
+  const box = cy.elements().boundingBox();
+  if (box.h > box.w * 1.2) {
+    cy.nodes().positions((n) => ({ x: n.position("y"), y: -n.position("x") }));
+    cy.fit(undefined, 48);
+  }
 }
 
 /* ---------- memory ---------- */

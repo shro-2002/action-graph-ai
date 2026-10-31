@@ -4,3 +4,4 @@ __pycache__/
 *.db
 .remember/
 .claude/
+data/*.log

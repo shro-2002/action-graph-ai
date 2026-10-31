@@ -51,10 +51,19 @@ cp .env.example .env   # add ANTHROPIC_API_KEY; GITHUB_REPO defaults to shro-200
 
 Open http://localhost:8765. The GitHub token comes from `GITHUB_TOKEN` or `gh auth token`.
 
+Optional settings:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `DB_PATH` | `data/actiongraph.db` | SQLite file; use a separate one per demo or audit run |
+| `AUTO_POST_REMINDERS` | off | `1` delivers reminders automatically as comments on the action's GitHub issue (that issue was already human-confirmed). Off: each reminder is posted with a confirmed click |
+| `OWNER_GITHUB` | none | `Dev=dev-login,Karan=karan-login`: reminder comments @mention the owner so GitHub notifies them |
+| (reminder window) | 48 h | Reminders cover actions due within 48 h or overdue; a due-soon reminder escalates once to overdue |
+
 ## Verify it
 
 ```bash
-.venv/bin/python -m pytest -q          # 26 tests: cleanup, dates, extraction, conflicts, supersede, approval gate, double-submit, reminders, digest, CSRF + host checks
+.venv/bin/python -m pytest -q          # 30 tests: cleanup, inline speaker labels, dates, extraction, conflicts, supersede, approval gate, double-submit, timeout retry, reminders + escalation + delivery, digest, CSRF + host checks
 .venv/bin/python -m evals.run_eval     # precision/recall on labeled messy-speech cases (rules)
 .venv/bin/python -m evals.run_eval --llm   # same cases through Claude
 .venv/bin/python -m evals.run_eval --holdout [--llm]   # 18 held-out cases, never used for tuning

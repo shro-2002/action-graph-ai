@@ -1,30 +1,52 @@
 # 3-minute demo script
 
-Covers every item in the official brief for Problem 03 (Meeting-to-execution agent): speaker attribution, extraction, conflicts with memory, tracker integration, reminders, weekly digest per person, confirmation before posting.
+Final configuration: Claude `claude-sonnet-5-5`, commit `1f7f6ec` or later, empty `data/demo.db`, http://localhost:8765. Every step below was dry-run on 31 Oct against a throwaway database with these exact transcripts (speakers 8/8, all items correct, both conflicts flagged).
 
 ## Before you record
 
-1. Server: `LLM_PROVIDER=anthropic DB_PATH=data/demo.db .venv/bin/uvicorn app.main:app --port 8765` (already running on commit `5616c4e`; `data/demo.db` is empty). Check the header pill reads **Claude extraction on**. Muse (`LLM_PROVIDER=meta`) is optional and not used in the recording. The old database is untouched at `data/actiongraph.db`, with a copy at `data/actiongraph-pre-demo-2026-10-31.db`. Audit evidence stays in `data/audit.db`.
-2. Tabs: http://localhost:8765 and the GitHub issues page of the tracker repo, filtered to new issues (`is:issue sort:created-desc`). Issues #1–26 are earlier test, audit and release-check runs (#21–26 titled `[E2E TEST]`) and stay as history.
-3. Wispr Flow running. **Rehearse one line first**: say "Nisha colon okay so…" and check whether Wispr writes `Nisha:`. If it does not, type each `Name:` label and dictate only what that person says. Both give speaker attribution; one long paragraph is fine.
-4. Leave the meeting **Date** field set per step below. Reminders use today's date (31 Oct), so no clock tricks are needed.
+1. Open http://localhost:8765. The header must read **Claude extraction on** and **0 meetings**. If not, stop: the server is not the demo server.
+2. Second tab: `https://github.com/shro-2002/action-graph-ai/issues?q=is%3Aissue+sort%3Acreated-desc`. Issues #1–26 are earlier test runs (#21–26 titled `[E2E TEST]`); your demo creates #27 onward.
+3. Wispr Flow running. Rehearse in any text box: say "Nisha colon hello". If Wispr does not write `Nisha:`, type each `Nisha: ` label yourself and dictate only the words after it.
+4. All deadlines below are spoken as explicit dates, so nothing depends on the day you record. Reminders show Dev **overdue** and Karan **due soon** if you record on 31 Oct, 1 Nov or 2 Nov.
+5. Do not press **Run agent** twice. Wait for the trace (about 5–15 s).
+
+## Meeting 1: fields and dictation
+
+- Title: `Pricing review`
+- Date: **24 Oct 2026**
+- Attendees: `Nisha, Dev, Karan`
+- Dictate:
+
+> Nisha: Okay so um, for the paid tier we're going with seat-based pricing, nine dollars per seat. Dev: I'll, uh, update the pricing page copy by October twenty-ninth. Karan: And the free trial stays at fourteen days. Nisha: Karan, can you set up the Stripe test products by November second?
+
+Expected: 2 decisions ($9 per seat, 14 days), 2 actions (Dev, 2026-10-29; Karan, 2026-11-02).
+
+## Meeting 2: fields and dictation
+
+- Title: `Pricing follow-up`
+- Date: **31 Oct 2026**
+- Attendees: `Nisha, Dev, Karan`
+- Dictate:
+
+> Nisha: Finance came back, we're changing the paid tier to twelve dollars per seat. Karan: And the trial, we're cutting it to seven days, no sorry, ten days. Karan: I'll announce the new price on LinkedIn by November sixth. Dev: I might look into a churn dashboard at some point.
+
+Expected: 2 decisions, both with red conflict cards ($9 → $12, 14 → 10 days); 1 action (Karan, 2026-11-06); no item for the churn dashboard.
 
 ## Script
 
 | Time | Do | Say |
 |---|---|---|
 | 0:00–0:15 | Landing screen | "Decisions made in meetings get lost, and they quietly contradict each other. Action Graph turns a spoken meeting into tracked work, and remembers what you decided." |
-| 0:15–0:50 | Title "Pricing review", date **24 Oct**, attendees `Nisha, Dev, Karan`. Click the transcript box, **hold the Wispr Flow hotkey** and say: *"Nisha: Okay so um, for the paid tier we're going with seat-based pricing, nine dollars per seat. Dev: I'll, uh, update the pricing page copy by Thursday. Karan: And the free trial stays at fourteen days. Nisha: Karan, can you set up the Stripe test products by November second?"* → **Run agent** | "That's real speech, fillers and all. Claude splits it by speaker and pulls out two decisions and two actions, each with an owner and a real date." Open **Cleaned, speaker-attributed transcript** for one second. |
-| 0:50–1:10 | **Approve** all four → **Review & post to GitHub** → read the dialog → **Confirm** → switch to the GitHub tab | "Nothing leaves without my approval and an explicit confirmation. There are the issues." |
-| 1:10–1:45 | New meeting: title "Pricing follow-up", date **31 Oct**. Dictate: *"Nisha: Finance came back, we're changing the paid tier to twelve dollars per seat. Karan: And the trial, we're cutting it to seven days, no sorry, ten days. Karan: I'll announce the new price on LinkedIn by Friday. Dev: I might look into a churn dashboard at some point."* → **Run agent** | "I changed my mind mid-sentence and someone said something vague." Point at: ten days, not seven; no task for the vague remark; two red conflict cards. |
-| 1:45–2:10 | Read one conflict reason aloud. **Approve** both decisions. **Reject** the LinkedIn announcement. **Post** → Confirm. Open the old $9 issue and show the "Superseded by" comment | "It checked memory: Nisha set nine dollars on the 24th, so this contradicts it, and it says why. I approve the change, and I reject the announcement because finance hasn't signed off. The rejected item never reaches GitHub, and the old issue now points at the new one." |
-| 2:10–2:30 | **Memory** tab, then **Action graph** | "Each decision's history across meetings, and who owns what, including the conflict edges." |
-| 2:30–2:50 | **Reminders** → **Check deadlines** (leave "as of" empty = now). Dev's item shows **Overdue**, Karan's **Due soon**. Click **Post to issue** on one → confirm → open the comment. Then **Weekly digest** → week of 26 Oct → point at Dev's card → **Email** | "The checker runs every five minutes. A reminder goes to the GitHub issue as a comment, and the owner's digest is one click to send." |
-| 2:50–3:00 | **Scorecard**, held-out tile | "Measured, not claimed: 18 held-out messy-speech cases. And I built it by voice with Wispr Flow." |
+| 0:15–0:50 | Fill meeting 1 fields. Click the transcript box, hold the Wispr Flow hotkey, dictate meeting 1. **Run agent**. Open **Cleaned, speaker-attributed transcript** for a second | "Real speech, fillers and all. Claude splits it by speaker and pulls out two decisions and two actions, each with an owner and a date." |
+| 0:50–1:10 | **Approve** all four → **Review & post to GitHub** → read the dialog → **Confirm & create issues** → GitHub tab, refresh | "Nothing leaves without my approval and an explicit confirmation. There are the issues." |
+| 1:10–1:45 | Back to the app. Change title and date, dictate meeting 2, **Run agent** | "I changed my mind mid-sentence, and someone said something vague." Point at: ten days, not seven; no churn task; two red conflict cards. |
+| 1:45–2:10 | Read the $9 → $12 conflict reason. **Approve** both decisions. **Reject** the LinkedIn action. **Review & post** → the dialog lists only the 2 decisions → **Confirm**. GitHub tab: open the $9 issue, scroll to the "Superseded by" comment | "It checked memory: Nisha set nine dollars on the 24th. I approve the change and reject the announcement until finance signs off. The rejected item never reaches GitHub, and the old issue now points to the new one." |
+| 2:10–2:30 | **Memory** tab, then **Action graph** (wait 2 s for layout) | "Each decision's history across meetings, and who owns what, with the conflict edges." |
+| 2:30–2:50 | **Reminders** → **Check deadlines** (leave "as of" empty). Dev is overdue, Karan due soon. **Post to issue** on Dev's → OK. **Weekly digest** → week starting **26 Oct 2026** → **Build digests** → point at Dev's card | "The checker also runs every five minutes. I post a reminder to the issue as a comment, and each person gets their own digest that I can copy or email." |
+| 2:50–3:00 | **Scorecard** | "Measured: one hundred percent precision and recall on 18 held-out messy-speech cases with Claude. Built by voice with Wispr Flow." |
 
-If the extractor ever shows "· rules" in the trace, Claude failed and the fallback ran; stop and re-run rather than record that take.
+## Say only what is true
 
-## What to say about delivery (be accurate)
-
-- Reminders are **scheduled** (checked every 5 min) and **delivered** as a GitHub issue comment. GitHub emails people watching the issue. With `OWNER_GITHUB=Dev=<login>,...` the comment @mentions the owner, so GitHub notifies them directly. With `AUTO_POST_REMINDERS=1` delivery happens without a click; in the demo it is a confirmed click.
-- The weekly digest is built per person and **sent by you** via the Email button or Copy. The app does not send email itself.
+- Reminders: generated automatically every 5 minutes; delivered as a GitHub issue comment after a confirm click. Automatic delivery exists (`AUTO_POST_REMINDERS=1`) but is not used or shown in this demo.
+- Digest: built per person in the app; you send it (Copy or Email opens your mail app). The app does not send email.
+- Do not click **Email** while recording unless you want your mail app on screen.

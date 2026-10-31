@@ -59,7 +59,12 @@ Open http://localhost:8765. The GitHub token comes from `GITHUB_TOKEN` or `gh au
 .venv/bin/python -m evals.run_eval --llm   # same cases through Claude
 ```
 
-Eval note: `evals/cases.json` is small (6 cases, 7 expected items). The rule extractor was tuned against it, so treat its 100% as a regression check, not a held-out accuracy number.
+| Extractor | Precision | Recall | Note |
+|---|---|---|---|
+| Claude (`claude-sonnet-5-5`) | 0.857 | 0.857 | Not tuned on the set. Its one miss reads "Anita owns the budget sheet" as an ownership decision, not a task |
+| Rules fallback | 1.0 | 1.0 | Tuned against this same set, so it's a regression check, not held-out accuracy |
+
+Decisions are scored the way the conflict engine compares them: subject similarity plus normalized values, so "Nov 28" equals "November 28". The set is small (6 cases, 7 expected items).
 
 ## Safety
 

@@ -145,7 +145,8 @@ Always keep the FINAL version of a self-corrected statement ("Friday, no wait, M
 Attribute speakers from labels like "Name:"; for unlabeled text infer from context or use the dictating user.
 Extract only real decisions (something the group settled) and action items (someone committed to do something).
 Owners must be people named in the meeting. Resolve relative deadlines against the meeting date.
-For decisions about something already in MEMORY, reuse that exact subject wording."""
+For decisions about something already in MEMORY, reuse that exact subject wording.
+Always respond by calling the record_meeting tool exactly once, even if there are no items."""
 
 
 def llm_extract(transcript: str, meeting_date: date, attendees: list[str], memory_subjects: list[str]) -> Extraction:
@@ -164,10 +165,12 @@ def llm_extract(transcript: str, meeting_date: date, attendees: list[str], memor
     )
     resp = client.messages.create(
         model=model, max_tokens=4096, system=SYSTEM, tools=[TOOL],
-        tool_choice={"type": "tool", "name": TOOL["name"]},
+        tool_choice={"type": "auto"},  # forced tool choice is not supported on every model; the system prompt requires the call
         messages=[{"role": "user", "content": prompt}],
     )
-    data = next(b.input for b in resp.content if b.type == "tool_use")
+    data = next((b.input for b in resp.content if b.type == "tool_use"), None)
+    if data is None:
+        raise ValueError(f"model did not call {TOOL['name']} (stop_reason={resp.stop_reason})")
     utterances = [Utterance(u["speaker"], u["text"]) for u in data["utterances"]]
     fields = Item.__dataclass_fields__
     items = [Item(**{k: v for k, v in raw.items() if k in fields}) for raw in data["items"]]

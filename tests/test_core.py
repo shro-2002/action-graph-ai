@@ -194,3 +194,48 @@ def test_marker_in_quoted_text_does_not_match(monkeypatch):
     monkeypatch.setattr(tracker, "_token", lambda: "t")
     monkeypatch.setattr("httpx.Client.get", lambda *a, **k: Resp())
     assert tracker.find_issue("m1") == "u2"
+
+
+def _meta_reply(monkeypatch, status=200, content=None):
+    import httpx
+    from app import extract as ex
+
+    record = content or {"utterances": [{"speaker": "Priya", "text": "Launch is Nov 14."}],
+                         "items": [{"kind": "decision", "text": "Launch is Nov 14", "subject": "launch date", "value": "Nov 14",
+                                    "speaker": "Priya", "source_quote": "Launch is Nov 14.", "confidence": 0.9}]}
+    sent = {}
+
+    def fake_post(url, headers, json, timeout):
+        sent.update(url=url, body=json)
+        return httpx.Response(status, json={"choices": [{"message": {"content": __import__("json").dumps(record)}}],
+                                            "usage": {"prompt_tokens": 100, "completion_tokens": 20}})
+    monkeypatch.setattr(httpx, "post", fake_post)
+    monkeypatch.setenv("LLM_PROVIDER", "meta")
+    monkeypatch.setenv("META_API_KEY", "test-key")
+    return ex, sent
+
+
+def test_meta_provider_uses_json_schema_and_reports_usage(monkeypatch):
+    ex, sent = _meta_reply(monkeypatch)
+    result = ex.extract("Priya: Launch is Nov 14.", date(2026, 10, 31), [], [])
+    assert result.extractor == "meta:muse-spark-1.3"
+    assert sent["url"] == "https://api.meta.ai/v1/chat/completions"
+    assert sent["body"]["response_format"]["type"] == "json_schema"
+    assert result.usage == {"input_tokens": 100, "output_tokens": 20}
+    assert [(i.kind, i.value) for i in result.items] == [("decision", "Nov 14")]
+
+
+def test_meta_failure_falls_back_to_rules_never_to_claude(monkeypatch):
+    ex, _ = _meta_reply(monkeypatch, status=500)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "would-be-used-if-we-switched-providers")
+    monkeypatch.setattr(ex, "llm_extract", lambda *a: pytest.fail("must not call Claude when LLM_PROVIDER=meta"))
+    result = ex.extract("Priya: I'll write the FAQ by Friday.", date(2026, 10, 31), [], [])
+    assert result.extractor == "rules" and "LLM unavailable" in result.notes[0]
+
+
+def test_unknown_provider_is_an_error(monkeypatch):
+    from app import extract as ex
+
+    monkeypatch.setenv("LLM_PROVIDER", "mystery")
+    with pytest.raises(ValueError, match="LLM_PROVIDER"):
+        ex.extract("Priya: hi there team.", date(2026, 10, 31), [], [])

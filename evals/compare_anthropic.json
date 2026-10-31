@@ -1,0 +1,101 @@
+{
+  "provider": "anthropic",
+  "dev": {
+    "cases": 6,
+    "precision": 0.857,
+    "recall": 0.857,
+    "tp": 6,
+    "fp": 1,
+    "fn": 1,
+    "schema_valid": "6/6",
+    "deadline_accuracy": "4/4",
+    "latency_s": {
+      "mean": 3.02,
+      "max": 5.42
+    },
+    "tokens": {
+      "input": 6607,
+      "output": 1932
+    },
+    "failures": [
+      {
+        "case": "trailing ask and name correction",
+        "fallback": false,
+        "notes": [],
+        "extra": [
+          [
+            "decision",
+            "budget sheet owner",
+            "anita"
+          ]
+        ],
+        "missed": [
+          [
+            "action",
+            "anita",
+            null
+          ]
+        ]
+      }
+    ]
+  },
+  "holdout": {
+    "cases": 18,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tp": 18,
+    "fp": 0,
+    "fn": 0,
+    "schema_valid": "18/18",
+    "deadline_accuracy": "12/12",
+    "latency_s": {
+      "mean": 2.48,
+      "max": 3.6
+    },
+    "tokens": {
+      "input": 19876,
+      "output": 4467
+    },
+    "failures": []
+  },
+  "pair": {
+    "extractors": [
+      "llm:claude-sonnet-5-5",
+      "llm:claude-sonnet-5-5"
+    ],
+    "speaker_accuracy": "8/8",
+    "contradictions_flagged": "2/2",
+    "conflict_reasons": [
+      "Contradicts 'Pricing review' (2026-10-24, Nisha): paid tier pricing was \u201cSeat-based, $9 per seat\u201d, now \u201c$12 per seat\u201d.",
+      "Contradicts 'Pricing review' (2026-10-24, Karan): free trial length was \u201c14 days\u201d, now \u201c10 days\u201d."
+    ],
+    "reused_memory_subject": [
+      "free trial length",
+      "paid tier pricing"
+    ],
+    "meeting2_items": [
+      [
+        "decision",
+        null,
+        null,
+        "paid tier pricing",
+        "$12 per seat"
+      ],
+      [
+        "decision",
+        null,
+        null,
+        "free trial length",
+        "10 days"
+      ],
+      [
+        "action",
+        "Karan",
+        "2026-11-06",
+        null,
+        null
+      ]
+    ]
+  },
+  "cost_usd_dev_plus_holdout": 0.117
+}

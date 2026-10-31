@@ -12,7 +12,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app import db, service, tracker
+from app import db, extract, service, tracker
 
 ROOT = Path(__file__).resolve().parent.parent
 REMINDER_INTERVAL_S = 300
@@ -92,7 +92,8 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "llm": bool(os.getenv("ANTHROPIC_API_KEY")), "repo": tracker.repo(),
+        provider = extract.provider_name()
+        return {"status": "ok", "provider": provider, "llm": bool(os.getenv(extract.PROVIDERS[provider][1])), "repo": tracker.repo(),
                 "auto_reminders": os.getenv("AUTO_POST_REMINDERS") == "1", "reminder_interval_s": REMINDER_INTERVAL_S}
 
     @app.post("/api/meetings", status_code=201)

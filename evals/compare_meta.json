@@ -1,0 +1,139 @@
+{
+  "provider": "meta",
+  "dev": {
+    "cases": 6,
+    "precision": 0.833,
+    "recall": 0.714,
+    "tp": 5,
+    "fp": 1,
+    "fn": 2,
+    "schema_valid": "6/6",
+    "deadline_accuracy": "3/4",
+    "latency_s": {
+      "mean": 8.32,
+      "max": 13.46
+    },
+    "tokens": {
+      "input": 2660,
+      "output": 10568
+    },
+    "failures": [
+      {
+        "case": "trailing ask and name correction",
+        "fallback": false,
+        "notes": [],
+        "extra": [
+          [
+            "action",
+            "meera",
+            "2026-11-06"
+          ]
+        ],
+        "missed": [
+          [
+            "action",
+            "anita",
+            null
+          ],
+          [
+            "action",
+            "meera",
+            "2026-11-13"
+          ]
+        ]
+      }
+    ]
+  },
+  "holdout": {
+    "cases": 18,
+    "precision": 0.941,
+    "recall": 0.889,
+    "tp": 16,
+    "fp": 1,
+    "fn": 2,
+    "schema_valid": "18/18",
+    "deadline_accuracy": "10/12",
+    "latency_s": {
+      "mean": 7.07,
+      "max": 15.43
+    },
+    "tokens": {
+      "input": 7999,
+      "output": 31264
+    },
+    "failures": [
+      {
+        "case": "passive task, owner explicitly unassigned",
+        "fallback": false,
+        "notes": [],
+        "extra": [],
+        "missed": [
+          [
+            "action",
+            "",
+            "2026-11-04"
+          ]
+        ]
+      },
+      {
+        "case": "deadline self-correction to next week",
+        "fallback": false,
+        "notes": [],
+        "extra": [
+          [
+            "decision",
+            "audit report due date",
+            "tuesday, nov 10"
+          ]
+        ],
+        "missed": [
+          [
+            "action",
+            "wendy",
+            "2026-11-10"
+          ]
+        ]
+      }
+    ]
+  },
+  "pair": {
+    "extractors": [
+      "meta:muse-spark-1.3",
+      "meta:muse-spark-1.3"
+    ],
+    "speaker_accuracy": "8/8",
+    "contradictions_flagged": "2/2",
+    "conflict_reasons": [
+      "Contradicts 'Pricing review' (2026-10-24, Nisha): paid tier pricing was \u201cseat-based, $9 per seat\u201d, now \u201c$12 per seat\u201d.",
+      "Contradicts 'Pricing review' (2026-10-24, Karan): free trial was \u201c14 days\u201d, now \u201c10 days\u201d."
+    ],
+    "reused_memory_subject": [
+      "free trial",
+      "paid tier pricing"
+    ],
+    "meeting2_items": [
+      [
+        "decision",
+        null,
+        null,
+        "paid tier pricing",
+        "$12 per seat"
+      ],
+      [
+        "decision",
+        null,
+        null,
+        "free trial",
+        "10 days"
+      ],
+      [
+        "action",
+        "Karan",
+        "2026-11-06",
+        null,
+        null
+      ]
+    ]
+  },
+  "cost_usd_dev_plus_holdout": 0.1911
+}

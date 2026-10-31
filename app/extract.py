@@ -1,4 +1,5 @@
 """Extract decisions and action items: Claude tool-use first, deterministic rules as fallback."""
+import json
 import logging
 import os
 import re
@@ -57,6 +58,7 @@ class Extraction:
     items: list[Item]
     extractor: str
     notes: list[str] = field(default_factory=list)
+    usage: dict = field(default_factory=dict)  # provider-reported tokens, for cost comparison
 
 
 def _category(value: str) -> str | None:
@@ -122,8 +124,11 @@ TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "utterances": {"type": "array", "items": {"type": "object", "properties": {
-                "speaker": {"type": "string"}, "text": {"type": "string"}}, "required": ["speaker", "text"]}},
+            "utterances": {"type": "array", "description": "The CLEANED transcript, one entry per speaker turn.", "items": {"type": "object", "properties": {
+                "speaker": {"type": "string"},
+                "text": {"type": "string", "description": "What the speaker meant, cleaned: no fillers (um, uh, you know, like), no stutters, "
+                         "and self-corrections resolved to the final version ('seven days, no sorry, ten days' -> 'ten days'). Keep their other words."}},
+                "required": ["speaker", "text"]}},
             "items": {"type": "array", "items": {"type": "object", "properties": {
                 "kind": {"type": "string", "enum": ["decision", "action"]},
                 "text": {"type": "string", "description": "One crisp sentence, imperative for actions."},
@@ -142,11 +147,57 @@ TOOL = {
 SYSTEM = """You turn messy dictated meeting speech into structured execution data.
 The transcript was captured by voice dictation: expect filler words, digressions and self-corrections.
 Always keep the FINAL version of a self-corrected statement ("Friday, no wait, Monday" means Monday).
+In utterances, write each turn cleaned: drop fillers and stutters, and keep only the corrected version of any self-correction.
 Attribute speakers from labels like "Name:"; for unlabeled text infer from context or use the dictating user.
 Extract only real decisions (something the group settled) and action items (someone committed to do something).
 Owners must be people named in the meeting. Resolve relative deadlines against the meeting date.
 For decisions about something already in MEMORY, reuse that exact subject wording.
 Always respond by calling the record_meeting tool exactly once, even if there are no items."""
+
+
+def _prompt(transcript: str, meeting_date: date, attendees: list[str], memory_subjects: list[str]) -> str:
+    return (
+        f"Meeting date: {meeting_date.isoformat()} ({meeting_date:%A})\n"
+        f"Attendees: {', '.join(attendees) or 'unknown'}\n"
+        f"MEMORY subjects: {', '.join(memory_subjects) or 'none'}\n\nTRANSCRIPT:\n{transcript}"
+    )
+
+
+def _from_record(data: dict, extractor: str, usage: dict) -> Extraction:
+    utterances = [Utterance(u["speaker"], u["text"]) for u in data["utterances"]]
+    fields = Item.__dataclass_fields__
+    items = [Item(**{k: v for k, v in raw.items() if k in fields}) for raw in data["items"]]
+    return Extraction(utterances, items, extractor, usage=usage)
+
+
+# Same instructions as Claude, but Muse answers in JSON-schema mode instead of through a tool call.
+META_SYSTEM = SYSTEM.replace("by calling the record_meeting tool exactly once", "with JSON matching the record_meeting schema")
+
+
+def meta_extract(transcript: str, meeting_date: date, attendees: list[str], memory_subjects: list[str]) -> Extraction:
+    """Meta Muse Spark via its OpenAI-compatible Chat Completions API with native JSON-schema output."""
+    import httpx
+
+    model = os.getenv("META_MODEL", "muse-spark-1.3")
+    resp = httpx.post(
+        os.getenv("META_API_BASE", "https://api.meta.ai/v1").rstrip("/") + "/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['META_API_KEY']}"},
+        timeout=90,
+        json={
+            "model": model,
+            "messages": [
+                {"role": "system", "content": META_SYSTEM},
+                {"role": "user", "content": _prompt(transcript, meeting_date, attendees, memory_subjects)},
+            ],
+            "response_format": {"type": "json_schema", "json_schema": {"name": TOOL["name"], "schema": TOOL["input_schema"]}},
+        },
+    )
+    if resp.status_code >= 300:  # body only: never echo request headers, which carry the key
+        raise ValueError(f"Meta API {resp.status_code}: {resp.text[:200]}")
+    body = resp.json()
+    usage = body.get("usage") or {}
+    return _from_record(json.loads(body["choices"][0]["message"]["content"]), f"meta:{model}",
+                        {"input_tokens": usage.get("prompt_tokens"), "output_tokens": usage.get("completion_tokens")})
 
 
 def llm_extract(transcript: str, meeting_date: date, attendees: list[str], memory_subjects: list[str]) -> Extraction:
@@ -158,11 +209,7 @@ def llm_extract(transcript: str, meeting_date: date, attendees: list[str], memor
         timeout=90,
     )
     model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5")
-    prompt = (
-        f"Meeting date: {meeting_date.isoformat()} ({meeting_date:%A})\n"
-        f"Attendees: {', '.join(attendees) or 'unknown'}\n"
-        f"MEMORY subjects: {', '.join(memory_subjects) or 'none'}\n\nTRANSCRIPT:\n{transcript}"
-    )
+    prompt = _prompt(transcript, meeting_date, attendees, memory_subjects)
     resp = client.messages.create(
         model=model, max_tokens=4096, system=SYSTEM, tools=[TOOL],
         tool_choice={"type": "auto"},  # forced tool choice is not supported on every model; the system prompt requires the call
@@ -171,10 +218,18 @@ def llm_extract(transcript: str, meeting_date: date, attendees: list[str], memor
     data = next((b.input for b in resp.content if b.type == "tool_use"), None)
     if data is None:
         raise ValueError(f"model did not call {TOOL['name']} (stop_reason={resp.stop_reason})")
-    utterances = [Utterance(u["speaker"], u["text"]) for u in data["utterances"]]
-    fields = Item.__dataclass_fields__
-    items = [Item(**{k: v for k, v in raw.items() if k in fields}) for raw in data["items"]]
-    return Extraction(utterances, items, f"llm:{model}")
+    return _from_record(data, f"llm:{model}", {"input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens})
+
+
+PROVIDERS = {"anthropic": (llm_extract, "ANTHROPIC_API_KEY"), "meta": (meta_extract, "META_API_KEY")}
+
+
+def provider_name() -> str:
+    """LLM_PROVIDER, default anthropic. An unknown value is an error, never a silent switch to another provider."""
+    name = os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+    if name not in PROVIDERS:
+        raise ValueError(f"LLM_PROVIDER must be one of {sorted(PROVIDERS)}, got {name!r}")
+    return name
 
 
 def _validate(items: list[Item], meeting_date: date, people: set[str]) -> list[Item]:
@@ -198,12 +253,14 @@ def _validate(items: list[Item], meeting_date: date, people: set[str]) -> list[I
 def extract(transcript: str, meeting_date: date, attendees: list[str], memory_subjects: list[str]) -> Extraction:
     notes: list[str] = []
     result: Extraction | None = None
-    if os.getenv("ANTHROPIC_API_KEY"):
+    # One provider per run. A failure falls back to rules, labelled as rules: never to the other LLM.
+    provider, key = PROVIDERS[provider_name()]
+    if os.getenv(key):
         try:
-            result = llm_extract(transcript, meeting_date, attendees, memory_subjects)
+            result = provider(transcript, meeting_date, attendees, memory_subjects)
         except Exception as exc:  # network, auth, schema: fall back, but say so
-            log.warning("LLM extraction failed, using rules: %s", exc)
-            notes.append(f"LLM unavailable ({type(exc).__name__}); used deterministic extractor.")
+            log.warning("LLM extraction failed, using rules: %s", type(exc).__name__)
+            notes.append(f"{provider_name()} LLM unavailable ({type(exc).__name__}); used the rules extractor, not another LLM.")
     if result is None:
         utterances = parse_speakers(transcript, attendees[0] if attendees else "Speaker", attendees)
         result = Extraction(utterances, rule_extract(utterances, meeting_date), "rules")

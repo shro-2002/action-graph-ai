@@ -56,6 +56,8 @@ Optional settings:
 | Variable | Default | Effect |
 |---|---|---|
 | `DB_PATH` | `data/actiongraph.db` | SQLite file; use a separate one per demo or audit run |
+| `LLM_PROVIDER` | `anthropic` | `anthropic` (Claude, verified default) or `meta` (Meta Muse Spark via its OpenAI-compatible API, optional). An unknown value is an error. If the chosen provider fails, the rules extractor runs and is labelled `rules`; it never switches to the other LLM |
+| `META_API_KEY` / `META_API_BASE` / `META_MODEL` | none / `https://api.meta.ai/v1` / `muse-spark-1.3` | Only used when `LLM_PROVIDER=meta` |
 | `AUTO_POST_REMINDERS` | off | `1` delivers reminders automatically as comments on the action's GitHub issue (that issue was already human-confirmed). Off: each reminder is posted with a confirmed click |
 | `OWNER_GITHUB` | none | `Dev=dev-login,Karan=karan-login`: reminder comments @mention the owner so GitHub notifies them |
 | (reminder window) | 48 h | Reminders cover actions due within 48 h or overdue; a due-soon reminder escalates once to overdue |
@@ -73,6 +75,23 @@ Optional settings:
 |---|---|---|---|
 | Claude (`claude-sonnet-5-5`) | P 0.857 / R 0.857 | P 1.0 / R 1.0 | Neither set was used to tune the prompt. Held-out cases were written by the same AI assistant family, so phrasing bias is possible |
 | Rules fallback | P 1.0 / R 1.0 | P 0.50 / R 0.39 | Tuned on the dev set; the held-out score is its real accuracy. It is a degraded fallback, always labelled in the UI |
+
+### Provider comparison (31 Oct 2026, same cases, same frozen scoring)
+
+`python -m evals.compare_providers` with `LLM_PROVIDER=anthropic` or `meta`. Results after the shared transcript-cleaning prompt change: `evals/compare_*_v2.json`.
+
+| | Claude `claude-sonnet-5-5` | Meta `muse-spark-1.3` |
+|---|---|---|
+| Dev P / R | 0.857 / 0.857 | 1.0 / 0.857 |
+| Held-out P / R | **1.0 / 1.0** | 0.882 / 0.833 |
+| Schema-valid responses | 24/24 | 24/24 |
+| Deadlines correct | 16/16 | 14/16 |
+| Speakers / contradictions (demo pair) | 8/8 / 2/2 | 8/8 / 2/2 |
+| Fillers or corrections left in cleaned turns | 0 | 0 |
+| Mean latency per case | 2.5–3.8 s | 6.8–7.7 s (max 21 s) |
+| Cost of 24 cases | $0.13 | $0.19 (reasoning tokens bill as output) |
+
+Claude stays the default; Muse is an optional provider.
 
 Decisions are scored the way the conflict engine compares them: subject similarity plus normalized values, so "Nov 28" equals "November 28". The set is small (6 cases, 7 expected items).
 

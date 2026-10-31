@@ -49,7 +49,7 @@ async function loadStatus() {
     : `Checked every ${health.reminder_interval_s / 60} minutes. Delivery is manual: posting a reminder to the GitHub issue asks first. Set AUTO_POST_REMINDERS=1 to deliver automatically.`;
   const s = await api("/api/stats");
   $("#status").innerHTML = `
-    <span class="pill ${health.llm ? "on" : "off"}">${health.llm ? "Claude extraction on" : "Rules-only extraction"}</span>
+    <span class="pill ${health.llm ? "on" : "off"}">${health.llm ? `${health.provider === "meta" ? "Meta Muse" : "Claude"} extraction on` : "Rules-only extraction"}</span>
     <span class="pill">Tracker: <a href="https://github.com/${esc(health.repo)}/issues" target="_blank" rel="noopener">${esc(health.repo)}</a></span>
     <span class="pill">${s.meetings} meetings · ${s.conflicts_flagged} conflicts caught</span>`;
 }

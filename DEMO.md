@@ -4,8 +4,8 @@ Covers every item in the official brief for Problem 03 (Meeting-to-execution age
 
 ## Before you record
 
-1. Server: `DB_PATH=data/demo.db .venv/bin/uvicorn app.main:app --port 8765` (already running; `data/demo.db` is empty). The old database is untouched at `data/actiongraph.db`, with a copy at `data/actiongraph-pre-demo-2026-10-31.db`. Audit evidence stays in `data/audit.db`.
-2. Tabs: http://localhost:8765 and the GitHub issues page of the tracker repo, filtered to new issues (`is:issue sort:created-desc`). Issues #1–20 are earlier test and audit runs and stay as history.
+1. Server: `LLM_PROVIDER=anthropic DB_PATH=data/demo.db .venv/bin/uvicorn app.main:app --port 8765` (already running on commit `5616c4e`; `data/demo.db` is empty). Check the header pill reads **Claude extraction on**. Muse (`LLM_PROVIDER=meta`) is optional and not used in the recording. The old database is untouched at `data/actiongraph.db`, with a copy at `data/actiongraph-pre-demo-2026-10-31.db`. Audit evidence stays in `data/audit.db`.
+2. Tabs: http://localhost:8765 and the GitHub issues page of the tracker repo, filtered to new issues (`is:issue sort:created-desc`). Issues #1–26 are earlier test, audit and release-check runs (#21–26 titled `[E2E TEST]`) and stay as history.
 3. Wispr Flow running. **Rehearse one line first**: say "Nisha colon okay so…" and check whether Wispr writes `Nisha:`. If it does not, type each `Name:` label and dictate only what that person says. Both give speaker attribution; one long paragraph is fine.
 4. Leave the meeting **Date** field set per step below. Reminders use today's date (31 Oct), so no clock tricks are needed.
 

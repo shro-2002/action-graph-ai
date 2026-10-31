@@ -79,6 +79,14 @@ def _item(item_id: int) -> dict:
 
 
 EDITABLE = ("text", "owner", "deadline", "subject", "value")
+# Static statements per editable column: no column name is ever built from input.
+UPDATE_SQL = {
+    "text": "UPDATE items SET text=? WHERE id=?",
+    "owner": "UPDATE items SET owner=? WHERE id=?",
+    "deadline": "UPDATE items SET deadline=? WHERE id=?",
+    "subject": "UPDATE items SET subject=? WHERE id=?",
+    "value": "UPDATE items SET value=? WHERE id=?",
+}
 
 
 def approve(item_id: int, edits: dict) -> dict:
@@ -87,7 +95,7 @@ def approve(item_id: int, edits: dict) -> dict:
         raise InvalidState(f"item {item_id} is {it['status']}")
     changed = {k: v for k, v in edits.items() if k in EDITABLE and v != it[k]}
     for key, val in changed.items():
-        db.execute(f"UPDATE items SET {key}=? WHERE id=?", (val or None, item_id))  # key is whitelisted above
+        db.execute(UPDATE_SQL[key], (val or None, item_id))
     db.execute("UPDATE items SET status='approved' WHERE id=?", (item_id,))
     if it["kind"] == "decision" and it["conflict_with"]:
         db.execute("UPDATE items SET status='superseded' WHERE id=?", (it["conflict_with"],))

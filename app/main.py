@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -15,6 +16,8 @@ from app import db, service, tracker
 
 ROOT = Path(__file__).resolve().parent.parent
 REMINDER_INTERVAL_S = 300
+CSRF_HEADER = "x-action-graph"  # custom header: cross-site pages cannot send it without a CORS preflight we never grant
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 log = logging.getLogger("actiongraph")
 
 
@@ -66,6 +69,14 @@ async def lifespan(_: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(title="Action Graph AI", lifespan=lifespan)
+    hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[h.strip() for h in hosts])  # blocks DNS rebinding
+
+    @app.middleware("http")
+    async def require_app_header(request: Request, call_next):
+        if request.url.path.startswith("/api/") and request.method not in SAFE_METHODS and request.headers.get(CSRF_HEADER) != "1":
+            return JSONResponse({"error": {"code": "FORBIDDEN", "message": f"missing {CSRF_HEADER} header"}}, status_code=403)
+        return await call_next(request)
 
     @app.exception_handler(service.NotFound)
     async def not_found(_: Request, exc: service.NotFound):

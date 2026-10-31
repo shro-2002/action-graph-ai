@@ -114,3 +114,8 @@ def test_digest_groups_by_owner():
     people = {p["person"]: p for p in service.digest(date(2026, 10, 26))}
     assert [i["deadline"] for i in people["Meera"]["due_this_week"]] == ["2026-10-30"]
     assert len(people["Arjun"]["due_this_week"]) == 1
+
+
+def test_filler_between_verb_and_task():
+    m = service.ingest("q", date(2026, 10, 31), "Priya: Um, Arjun will, uh, write the FAQ by Friday, no wait, Thursday.", [])
+    assert [(i["owner"], i["deadline"]) for i in m["items"]] == [("Arjun", "2026-11-05")]

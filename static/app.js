@@ -6,7 +6,7 @@ let health = {};
 let currentMeeting = null;
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const res = await fetch(path, { headers: { "Content-Type": "application/json", "X-Action-Graph": "1" }, ...opts });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error?.message || data.detail?.[0]?.msg || data.detail || `HTTP ${res.status}`);
   return data;

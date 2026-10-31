@@ -54,7 +54,7 @@ Open http://localhost:8765. The GitHub token comes from `GITHUB_TOKEN` or `gh au
 ## Verify it
 
 ```bash
-.venv/bin/python -m pytest -q          # 22 tests: cleanup, dates, extraction, conflicts, supersede, approval gate, reminders, digest
+.venv/bin/python -m pytest -q          # 25 tests: cleanup, dates, extraction, conflicts, supersede, approval gate, reminders, digest, CSRF + host checks
 .venv/bin/python -m evals.run_eval     # precision/recall on labeled messy-speech cases (rules)
 .venv/bin/python -m evals.run_eval --llm   # same cases through Claude
 ```
@@ -64,7 +64,7 @@ Eval note: `evals/cases.json` is small (6 cases, 7 expected items). The rule ext
 ## Safety
 
 - Nothing is posted without an approved item **and** an explicit `confirm: true` from the dialog. A test enforces this.
-- Every value shown in the UI is HTML-escaped. Inputs are length-limited with Pydantic. SQL is parameterized, and the editable columns are whitelisted.
+- State-changing API calls require an `X-Action-Graph` header (blocks cross-site requests) and the Host header must be allowlisted (blocks DNS rebinding). Every value shown in the UI is HTML-escaped. Inputs are length-limited with Pydantic. SQL is parameterized, and the editable columns are whitelisted.
 - Secrets stay in `.env` (gitignored). The app ignores Claude Code's `ANTHROPIC_BASE_URL` and talks to the public API unless `ANTHROPIC_API_BASE` is set.
 
 ## Built with voice

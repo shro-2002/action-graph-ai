@@ -21,8 +21,8 @@ DECISION_CUE = re.compile(
     r"is final|we're dropping|we are dropping|we will not|we won't|scrap(?:ping)? the|switch(?:ing)? to)\b",
     re.I,
 )
-SELF_ACTION = re.compile(r"^(?:(?:so|okay|ok|and|yeah)[,]?\s+)*(?:i'll|i will|i can|i'm going to|i am going to|let me)\s+(.+)", re.I)
-NAMED_ACTION = re.compile(r"\b([A-Z][a-z]+)(?:,)?\s+(?:will|is going to|to|can you|could you|please|owns|takes|should)\s+(.+)")
+SELF_ACTION = re.compile(r"^(?:(?:so|okay|ok|and|yeah)[,]?\s+)*(?:i'll|i will|i can|i'm going to|i am going to|let me),?\s+(.+)", re.I)
+NAMED_ACTION = re.compile(r"\b([A-Z][a-z]+)(?:,)?\s+(?:will|is going to|to|can you|could you|please|owns|takes|should),?\s+(.+)")
 TRAILING_ASK = re.compile(r"^(?:[Cc]an|[Cc]ould|[Ww]ould) you\s+(.+?),?\s+([A-Z][a-z]+)\??$")
 CATEGORIES = {
     "database": "postgres postgresql mysql mongodb mongo sqlite dynamodb firestore supabase".split(),

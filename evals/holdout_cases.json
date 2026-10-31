@@ -1,0 +1,122 @@
+[
+  {
+    "name": "vague intention is not a commitment",
+    "date": "2026-11-02",
+    "transcript": "Rohan: Yeah we should probably, like, revisit the onboarding flow at some point.\nTara: Mm, maybe, yeah.",
+    "expected": []
+  },
+  {
+    "name": "team task with no owner",
+    "date": "2026-11-02",
+    "transcript": "Tara: Um, we need to fix the login bug by Friday, it's blocking the demo.",
+    "expected": [{"kind": "action", "owner": null, "deadline": "2026-11-06"}]
+  },
+  {
+    "name": "passive task, owner explicitly unassigned",
+    "date": "2026-11-02",
+    "transcript": "Imran: The pricing FAQ needs to be updated by Wednesday. Someone should own that, we'll figure out who.",
+    "expected": [{"kind": "action", "owner": null, "deadline": "2026-11-04"}]
+  },
+  {
+    "name": "owner self-correction",
+    "date": "2026-11-02",
+    "transcript": "Leila: Okay so Sam will draft the RFP, sorry, not Sam, Priya will draft the RFP by Thursday.",
+    "expected": [{"kind": "action", "owner": "Priya", "deadline": "2026-11-05"}]
+  },
+  {
+    "name": "decision value corrected across sentences",
+    "date": "2026-11-02",
+    "transcript": "Omar: Let's host the offsite in Goa. Actually no, scratch that. We're going with Jaipur for the offsite.",
+    "expected": [{"kind": "decision", "subject": "offsite location", "value": "Jaipur"}]
+  },
+  {
+    "name": "conflicting proposals resolved in the meeting",
+    "date": "2026-11-02",
+    "transcript": "Ana: I think we go with Figma for design handoff.\nBen: No, we agreed last week on Zeplin, let's stick with Zeplin.\nAna: Fine, uh, Zeplin it is.",
+    "expected": [{"kind": "decision", "subject": "design handoff tool", "value": "Zeplin"}]
+  },
+  {
+    "name": "mixed relative dates",
+    "date": "2026-11-02",
+    "transcript": "Chen: I'll send the contract to legal tomorrow. Dina, can you book the venue by end of next week?\nDina: Yep.",
+    "expected": [
+      {"kind": "action", "owner": "Chen", "deadline": "2026-11-03"},
+      {"kind": "action", "owner": "Dina", "deadline": "2026-11-13"}
+    ]
+  },
+  {
+    "name": "in two weeks",
+    "date": "2026-11-02",
+    "transcript": "Eli: So Fatima will run the load test in two weeks, once staging is ready.",
+    "expected": [{"kind": "action", "owner": "Fatima", "deadline": "2026-11-16"}]
+  },
+  {
+    "name": "action restated three times",
+    "date": "2026-11-02",
+    "transcript": "Gita: Hari, please update the roadmap deck by Thursday.\nHari: Sure, roadmap deck by Thursday, got it.\nGita: Great, so Hari owns the roadmap deck, Thursday.",
+    "expected": [{"kind": "action", "owner": "Hari", "deadline": "2026-11-05"}]
+  },
+  {
+    "name": "decision restated three times",
+    "date": "2026-11-02",
+    "transcript": "Ivy: Decision: we're launching in the EU first.\nJay: Yep, EU first.\nIvy: Just to confirm, the EU is our first launch market.",
+    "expected": [{"kind": "decision", "subject": "first launch market", "value": "EU"}]
+  },
+  {
+    "name": "social chatter with a non-work 'I'll'",
+    "date": "2026-11-02",
+    "transcript": "Kim: I'll grab coffee, anyone want some?\nLeo: I'm good. Did you see the game last night?\nKim: Ugh, don't remind me.",
+    "expected": []
+  },
+  {
+    "name": "hypothetical, explicitly undecided",
+    "date": "2026-11-02",
+    "transcript": "Mia: If we went with AWS we'd probably save money, but let's discuss next time.\nNoah: Yeah, let's not decide today.",
+    "expected": []
+  },
+  {
+    "name": "request nobody accepts",
+    "date": "2026-11-02",
+    "transcript": "Pia: Could someone look at the flaky checkout test?\nQuinn: Hmm, I'm swamped this week, honestly.\nPia: Okay, we'll come back to it.",
+    "expected": []
+  },
+  {
+    "name": "unlabeled dictation with decision and action",
+    "date": "2026-11-02",
+    "transcript": "so um I talked to Uma and she'll finish the billing migration by the 20th of November, and we decided to keep Postgres for the database.",
+    "expected": [
+      {"kind": "action", "owner": "Uma", "deadline": "2026-11-20"},
+      {"kind": "decision", "subject": "database", "value": "Postgres"}
+    ]
+  },
+  {
+    "name": "deadline self-correction to next week",
+    "date": "2026-11-02",
+    "transcript": "Vik: Wendy, the audit report is due Monday, wait, no, Tuesday next week.\nWendy: Okay, Tuesday.",
+    "expected": [{"kind": "action", "owner": "Wendy", "deadline": "2026-11-10"}]
+  },
+  {
+    "name": "end of day",
+    "date": "2026-11-02",
+    "transcript": "Xena: I'll, uh, circulate the minutes by EOD.",
+    "expected": [{"kind": "action", "owner": "Xena", "deadline": "2026-11-02"}]
+  },
+  {
+    "name": "weekday said on a Friday",
+    "date": "2026-11-06",
+    "transcript": "Yuri: Okay, I'll ship the hotfix Monday. Zoe, you'll review it Monday morning too?\nZoe: Yes.",
+    "expected": [
+      {"kind": "action", "owner": "Yuri", "deadline": "2026-11-09"},
+      {"kind": "action", "owner": "Zoe", "deadline": "2026-11-09"}
+    ]
+  },
+  {
+    "name": "reversal decision plus follow-up action",
+    "date": "2026-11-02",
+    "transcript": "Raj: Final call, we're not doing the referral program in Q1. Sara will tell the partners by Friday.",
+    "expected": [
+      {"kind": "decision", "subject": "referral program", "value": "not in Q1"},
+      {"kind": "action", "owner": "Sara", "deadline": "2026-11-06"}
+    ]
+  }
+]

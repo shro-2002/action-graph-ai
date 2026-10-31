@@ -1,4 +1,5 @@
 """Agent pipeline and state transitions. Routes in main.py stay thin."""
+import threading
 from datetime import date, datetime, timedelta
 
 from app import db, tracker
@@ -7,6 +8,11 @@ from app.extract import extract
 
 ACTIVE_DECISION = "('approved','posted','done')"
 OPEN_ACTION = "('approved','posted')"
+
+
+# ponytail: one process-wide lock so a double click cannot create two issues for one item.
+# Holds for a single uvicorn worker; with several workers, claim rows in the DB instead.
+_post_lock = threading.Lock()
 
 
 class NotFound(LookupError):
@@ -136,6 +142,11 @@ def _issue_body(it: dict, m: dict) -> str:
 
 def post(item_ids: list[int]) -> list[dict]:
     """Create tracker issues. Only items a human approved are eligible."""
+    with _post_lock:
+        return _post(item_ids)
+
+
+def _post(item_ids: list[int]) -> list[dict]:
     results = []
     for item_id in item_ids:
         it = _item(item_id)

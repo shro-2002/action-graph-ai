@@ -1,0 +1,9 @@
+{
+  "set": "holdout",
+  "extractor": "rules",
+  "precision": 0.5,
+  "recall": 0.389,
+  "tp": 7,
+  "fp": 7,
+  "fn": 11
+}

@@ -54,15 +54,16 @@ Open http://localhost:8765. The GitHub token comes from `GITHUB_TOKEN` or `gh au
 ## Verify it
 
 ```bash
-.venv/bin/python -m pytest -q          # 25 tests: cleanup, dates, extraction, conflicts, supersede, approval gate, reminders, digest, CSRF + host checks
+.venv/bin/python -m pytest -q          # 26 tests: cleanup, dates, extraction, conflicts, supersede, approval gate, double-submit, reminders, digest, CSRF + host checks
 .venv/bin/python -m evals.run_eval     # precision/recall on labeled messy-speech cases (rules)
 .venv/bin/python -m evals.run_eval --llm   # same cases through Claude
+.venv/bin/python -m evals.run_eval --holdout [--llm]   # 18 held-out cases, never used for tuning
 ```
 
-| Extractor | Precision | Recall | Note |
+| Extractor | Dev set (6 cases, 7 items) | Held-out set (18 cases, 18 items) | Note |
 |---|---|---|---|
-| Claude (`claude-sonnet-5-5`) | 0.857 | 0.857 | Not tuned on the set. Its one miss reads "Anita owns the budget sheet" as an ownership decision, not a task |
-| Rules fallback | 1.0 | 1.0 | Tuned against this same set, so it's a regression check, not held-out accuracy |
+| Claude (`claude-sonnet-5-5`) | P 0.857 / R 0.857 | P 1.0 / R 1.0 | Neither set was used to tune the prompt. Held-out cases were written by the same AI assistant family, so phrasing bias is possible |
+| Rules fallback | P 1.0 / R 1.0 | P 0.50 / R 0.39 | Tuned on the dev set; the held-out score is its real accuracy. It is a degraded fallback, always labelled in the UI |
 
 Decisions are scored the way the conflict engine compares them: subject similarity plus normalized values, so "Nov 28" equals "November 28". The set is small (6 cases, 7 expected items).
 

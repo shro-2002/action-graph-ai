@@ -101,6 +101,26 @@ def test_nothing_posted_without_approval(monkeypatch):
     assert results[0]["url"] and "not approved" in results[1]["error"]
 
 
+def test_concurrent_post_creates_one_issue(monkeypatch):
+    import threading
+    import time
+
+    calls = []
+
+    def slow_create(*a):
+        calls.append(a)
+        time.sleep(0.2)  # GitHub round-trip: a second click lands while the first is in flight
+        return f"https://github.com/x/y/issues/{len(calls)}"
+
+    monkeypatch.setattr("app.tracker.create_issue", slow_create)
+    item = _ingest("01_sprint_planning", date(2026, 10, 24))["items"][0]
+    service.approve(item["id"], {})
+    threads = [threading.Thread(target=service.post, args=([item["id"]],)) for _ in range(2)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert len(calls) == 1
+
+
 def test_reminders_due_window():
     m = _ingest("01_sprint_planning", date(2026, 10, 24))
     _approve_all(m)

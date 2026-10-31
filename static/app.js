@@ -292,7 +292,7 @@ async function loadScore() {
     + tile(s.rejected, "rejected") + tile(s.posted, "posted to GitHub") + tile(s.meetings, "meetings ingested");
   const evals = await api("/api/eval");
   $("#score").innerHTML += evals.map((e) => tile(`${Math.round(e.precision * 100)}% / ${Math.round(e.recall * 100)}%`,
-    `precision / recall on labeled messy-speech set · ${esc(e.extractor)}`)).join("");
+    `precision / recall · ${e.set === "holdout" ? "held-out set (never tuned on)" : "dev set (rules tuned on it)"} · ${esc(e.extractor)}`)).join("");
 }
 
 loadStatus();

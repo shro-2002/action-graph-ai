@@ -2,6 +2,7 @@
 
     python -m evals.run_eval            # deterministic extractor
     python -m evals.run_eval --llm      # Claude extractor (needs ANTHROPIC_API_KEY)
+    python -m evals.run_eval --holdout  # held-out cases, never used to tune either extractor
 """
 import json
 import os
@@ -13,7 +14,8 @@ from app.conflicts import SIMILARITY_THRESHOLD, _normalise_value, similarity
 from app.extract import extract
 from app.main import load_env
 
-CASES = Path(__file__).with_name("cases.json")
+HOLDOUT = "--holdout" in sys.argv
+CASES = Path(__file__).with_name("holdout_cases.json" if HOLDOUT else "cases.json")
 
 
 def key(item: dict) -> tuple:
@@ -59,9 +61,9 @@ def main() -> None:
         print(f"{'PASS' if ok else 'MISS'}  {case['name']}" + ("" if ok else f"\n      extra  {sorted(extra)}\n      missed {sorted(missed)}"))
     precision = tp / (tp + fp) if tp + fp else 1.0
     recall = tp / (tp + fn) if tp + fn else 1.0
-    summary = {"extractor": extractor, "precision": round(precision, 3), "recall": round(recall, 3), "tp": tp, "fp": fp, "fn": fn}
+    summary = {"set": "holdout" if HOLDOUT else "dev", "extractor": extractor, "precision": round(precision, 3), "recall": round(recall, 3), "tp": tp, "fp": fp, "fn": fn}
     print(json.dumps(summary))
-    Path(__file__).with_name(f"results_{'llm' if '--llm' in sys.argv else 'rules'}.json").write_text(json.dumps(summary, indent=2))
+    Path(__file__).with_name(f"results_{'holdout_' if HOLDOUT else ''}{'llm' if '--llm' in sys.argv else 'rules'}.json").write_text(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

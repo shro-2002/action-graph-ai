@@ -1,0 +1,9 @@
+{
+  "set": "holdout",
+  "extractor": "llm:claude-sonnet-5-5",
+  "precision": 1.0,
+  "recall": 1.0,
+  "tp": 18,
+  "fp": 0,
+  "fn": 0
+}
